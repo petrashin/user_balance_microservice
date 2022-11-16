@@ -1,9 +1,9 @@
 # user_balance_microservice
 
 RUN
-'''
+```
 $ go install github.com/swaggo/swag/cmd/swag@latest
-'''
+```
 
 POST http://127.0.0.1:8080/update_balance/?id=32&balance=10000 - update user balance
 POST http://127.0.0.1:8080/reserve_money/?user_id=31&service_id=1&order_id=1&price=10000 - reserve money
