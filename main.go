@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "log"
   "strconv"
   "net/http"
   "encoding/json"
@@ -11,354 +12,232 @@ import (
   _ "github.com/go-sql-driver/mysql"
 )
 
-const db_type = "mysql"
-const connection = "root:root@tcp(127.0.0.1:3306)/avito"
+var db *sql.DB
 
 type User struct {
   Id int `json:"id"`
   Balance float64 `json:"balance"`
 }
 
-type Reservation struct {
-  User User `json:"user"`
-  Service int `json:"service"`
-  Order int `json:"order"`
-  Price float64 `json:"price"`
+func get_user_balance(id int) float64 {
+  query := "SELECT * FROM `users` WHERE `id`=?"
+  rows, err := db.Query(query, id)
+  if err != nil {
+    panic(err)
+  }
+
+  var user = User{}
+  for rows.Next() {
+    var tmp_user User
+    err = rows.Scan(&tmp_user.Id, &tmp_user.Balance)
+    if err != nil {
+      panic(err)
+    }
+    user = tmp_user
+  }
+  return user.Balance
 }
 
-type Revenue struct {
-  User User `json:"user"`
-  Service int `json:"service"`
-  Order int `json:"order"`
-  Price float64 `json:"price"`
+func check_user_exists(id int) bool {
+  query := "SELECT * FROM `users` WHERE `id`=?"
+  rows, err := db.Query(query, id)
+  if err != nil {
+    panic(err)
+  }
+  i := 0
+  for rows.Next() {
+    i++
+  }
+  if i > 0 {
+    return true
+  }
+  return false
+}
+
+func check_reservation_exists(user_id int, service_id int, order_id int, price float64) bool {
+  query := "SELECT * FROM `reservations` WHERE `user`=? AND `service`=? AND `order_id`=? AND `price`=?"
+  rows, err := db.Query(query, user_id, service_id, order_id, price)
+  if err != nil {
+    panic(err)
+  }
+  i := 0
+  for rows.Next() {
+    i++
+  }
+  if i > 0 {
+    return true
+  }
+  return false
 }
 
 func update_balance(w http.ResponseWriter, r *http.Request)  {
   w.Header().Set("Content-Type", "application/json")
 
-  id := r.URL.Query().Get("id")
-  balance := r.URL.Query().Get("balance")
+  id, err1 := strconv.Atoi(r.URL.Query().Get("id"))
+  balance, err2 := strconv.ParseFloat(r.URL.Query().Get("balance"), 64)
 
-  if id == "" || balance == "" {
+  if err1 != nil || err2 != nil {
     w.WriteHeader(http.StatusBadRequest)
-  	resp := make(map[string]string)
-  	resp["message"] = "Bad Request"
-  	jsonResp, err := json.Marshal(resp)
-  	if err != nil {
-  		panic(err)
-  	}
-  	w.Write(jsonResp)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Bad request"})
   	return
-  } else {
-    id, err := strconv.Atoi(id)
-    if err != nil {
-      panic(err)
-    }
-
-    balance, err := strconv.ParseFloat(balance, 64)
-    if err != nil {
-      panic(err)
-    }
-
-    db, err := sql.Open(db_type, connection)
-    if err != nil {
-      panic(err)
-    }
-    defer db.Close()
-
-    upsert_query := fmt.Sprintf("INSERT INTO `users`(`id`, `balance`) VALUES ('%d', '%g')" +
-                                "ON DUPLICATE KEY UPDATE `balance` = `balance` + '%g';", id, balance, balance)
-
-    insert, err := db.Query(upsert_query)
-      if err != nil {
-        panic(err)
-      }
-    defer insert.Close()
-
-    get_query := fmt.Sprintf("SELECT * FROM `users` WHERE `id`='%d'", id)
-
-    get, err := db.Query(get_query)
-    if err != nil {
-      panic(err)
-    }
-
-    var result_user = User{}
-
-    for get.Next() {
-      var user User
-      err = get.Scan(&user.Id, &user.Balance)
-      if err != nil {
-        panic(err)
-      }
-      result_user = user
-    }
-
-    json.NewEncoder(w).Encode(result_user)
   }
+
+  query := "INSERT INTO `users`(`id`, `balance`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `balance` = `balance` + ?"
+  insert, err := db.Query(query, id, balance, balance)
+  if err != nil {
+      panic(err)
+  }
+  defer insert.Close()
+
+  w.WriteHeader(http.StatusOK)
+  json.NewEncoder(w).Encode(map[string]string{"result": "Balance updated"})
 }
 
 func reserve_money(w http.ResponseWriter, r *http.Request)  {
   w.Header().Set("Content-Type", "application/json")
 
-  user_id := r.URL.Query().Get("user_id")
-  service_id := r.URL.Query().Get("service_id")
-  order_id := r.URL.Query().Get("order_id")
-  price := r.URL.Query().Get("price")
+  user_id, err1 := strconv.Atoi(r.URL.Query().Get("user_id"))
+  service_id, err2 := strconv.Atoi(r.URL.Query().Get("service_id"))
+  order_id, err3 := strconv.Atoi(r.URL.Query().Get("order_id"))
+  price, err4 := strconv.ParseFloat(r.URL.Query().Get("price"), 64)
 
-  if user_id == "" || service_id == "" || order_id == "" || price == "" {
+  if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
     w.WriteHeader(http.StatusBadRequest)
-  	resp := make(map[string]string)
-  	resp["message"] = "Bad Request"
-  	jsonResp, err := json.Marshal(resp)
-  	if err != nil {
-  		panic(err)
-  	}
-  	w.Write(jsonResp)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Bad request"})
   	return
-  } else {
-    user_id, err := strconv.Atoi(user_id)
-    if err != nil {
-      panic(err)
-    }
+  }
 
-    service_id, err := strconv.Atoi(service_id)
-    if err != nil {
-      panic(err)
-    }
+  if check_user_exists(user_id) {
+    new_balance := get_user_balance(user_id) - price
 
-    order_id, err := strconv.Atoi(order_id)
-    if err != nil {
-      panic(err)
-    }
-
-    db, err := sql.Open(db_type, connection)
-    if err != nil {
-      panic(err)
-    }
-    defer db.Close()
-
-    get_query := fmt.Sprintf("SELECT * FROM `users` WHERE `id`='%d'", user_id)
-
-    get_user, err := db.Query(get_query)
-    if err != nil {
-      panic(err)
-    }
-
-    var result_user = User{}
-
-    for get_user.Next() {
-      var user User
-      err = get_user.Scan(&user.Id, &user.Balance)
+    if new_balance >= 0 {
+      query := "INSERT INTO `reservations`(`user`, `service`, `order_id`, `price`) VALUES (?, ?, ?, ?)"
+      insert, err := db.Query(query, user_id, service_id, order_id, price)
       if err != nil {
         panic(err)
       }
-      result_user = user
-    }
-
-    price, err := strconv.ParseFloat(price, 64)
-    if err != nil {
-      panic(err)
-    }
-
-    new_balance := result_user.Balance - price
-
-    if new_balance >= 0 {
-      insert_query := fmt.Sprintf("INSERT INTO `reservations`(`user`, `service`, `order_id`, `price`)" +
-                                  "VALUES ('%d', '%d', '%d', '%g')", user_id, service_id, order_id, price)
-
-      insert, err := db.Query(insert_query)
-        if err != nil {
-          panic(err)
-        }
       defer insert.Close()
 
-      update_query := fmt.Sprintf("UPDATE users " +
-                                  "SET `balance` = '%g' " +
-                                  "WHERE `id` = '%d';", new_balance, user_id)
-
-      result_user.Balance = new_balance
-      var reservation = Reservation{User: result_user, Service: service_id, Order: order_id, Price: price}
-
-      update, err := db.Query(update_query)
-        if err != nil {
-          panic(err)
-        }
+      query = "UPDATE users SET `balance` = ? WHERE `id` = ?"
+      update, err := db.Query(query, new_balance, user_id)
+      if err != nil {
+        panic(err)
+      }
       defer update.Close()
 
-      json.NewEncoder(w).Encode(reservation)
-
+      w.WriteHeader(http.StatusOK)
+      json.NewEncoder(w).Encode(map[string]string{"result": "Money reserved"})
+      return
     } else {
       w.WriteHeader(http.StatusBadRequest)
-    	resp := make(map[string]string)
-    	resp["message"] = "Not enough money"
-    	jsonResp, err := json.Marshal(resp)
-    	if err != nil {
-    		panic(err)
-    	}
-    	w.Write(jsonResp)
-    	return
+      json.NewEncoder(w).Encode(map[string]string{"result": "Not enough money"})
+      return
     }
+  } else {
+    w.WriteHeader(http.StatusNotFound)
+    json.NewEncoder(w).Encode(map[string]string{"result": "User not found"})
+    return
   }
 }
 
 func revenue_recognition(w http.ResponseWriter, r *http.Request)  {
   w.Header().Set("Content-Type", "application/json")
 
-  user_id := r.URL.Query().Get("user_id")
-  service_id := r.URL.Query().Get("service_id")
-  order_id := r.URL.Query().Get("order_id")
-  price := r.URL.Query().Get("price")
+  user_id, err1 := strconv.Atoi(r.URL.Query().Get("user_id"))
+  service_id, err2 := strconv.Atoi(r.URL.Query().Get("service_id"))
+  order_id, err3 := strconv.Atoi(r.URL.Query().Get("order_id"))
+  price, err4 := strconv.ParseFloat(r.URL.Query().Get("price"), 64)
 
-  if user_id == "" || service_id == "" || order_id == "" || price == "" {
+  if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
     w.WriteHeader(http.StatusBadRequest)
-  	resp := make(map[string]string)
-  	resp["message"] = "Bad Request"
-  	jsonResp, err := json.Marshal(resp)
-  	if err != nil {
-  		panic(err)
-  	}
-  	w.Write(jsonResp)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Bad request"})
   	return
-  } else {
-    user_id, err := strconv.Atoi(user_id)
-    if err != nil {
-      panic(err)
-    }
-    service_id, err := strconv.Atoi(service_id)
-    if err != nil {
-      panic(err)
-    }
-    order_id, err := strconv.Atoi(order_id)
-    if err != nil {
-      panic(err)
-    }
-    price, err := strconv.ParseFloat(price, 64)
-    if err != nil {
-      panic(err)
-    }
+  }
 
-    db, err := sql.Open(db_type, connection)
-    if err != nil {
-      panic(err)
-    }
-    defer db.Close()
-
-    insert_query := fmt.Sprintf("INSERT INTO `revenue` " +
-                                "SELECT * FROM `reservations` " +
-                                "WHERE user = '%d' " +
-                                "AND service = '%d' " +
-                                "AND order_id = '%d' " +
-                                "AND price = '%g';", user_id, service_id, order_id, price)
-
-    delete_query := fmt.Sprintf("DELETE FROM `reservations` " +
-                                "WHERE user = '%d' " +
-                                "AND service = '%d' " +
-                                "AND order_id = '%d' " +
-                                "AND price = '%g';", user_id, service_id, order_id, price)
-
-    insert, err := db.Query(insert_query)
+  if check_reservation_exists(user_id, service_id, order_id, price) {
+    query := "INSERT INTO `revenue` SELECT * FROM `reservations` WHERE user = ? AND service = ? AND order_id = ? AND price = ?"
+    insert, err := db.Query(query, user_id, service_id, order_id, price)
     if err != nil {
       panic(err)
     }
     defer insert.Close()
 
-    delete, err := db.Query(delete_query)
+    query = "DELETE FROM `reservations` WHERE user = ? AND service = ? AND order_id = ? AND price = ?"
+    delete, err := db.Query(query, user_id, service_id, order_id, price)
     if err != nil {
       panic(err)
     }
     defer delete.Close()
 
-    get_query := fmt.Sprintf("SELECT * FROM `users` WHERE `id`='%d'", user_id)
-
-    get_user, err := db.Query(get_query)
-    if err != nil {
-      panic(err)
-    }
-
-    var result_user = User{}
-
-    for get_user.Next() {
-      var user User
-      err = get_user.Scan(&user.Id, &user.Balance)
-      if err != nil {
-        panic(err)
-      }
-      result_user = user
-    }
-
-    var revenue = Revenue{User: result_user, Service: service_id, Order: order_id, Price: price}
-    json.NewEncoder(w).Encode(revenue)
+    json.NewEncoder(w).Encode(map[string]string{"result": "Successfully"})
+    return
+  } else {
+    w.WriteHeader(http.StatusNotFound)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Not found"})
+  	return
   }
 }
 
 func get_balance(w http.ResponseWriter, r *http.Request)  {
   w.Header().Set("Content-Type", "application/json")
+  user_id, err := strconv.Atoi(r.URL.Query().Get("id"))
 
-  id := r.URL.Query().Get("id")
-
-  if id == "" {
+  if err != nil {
     w.WriteHeader(http.StatusBadRequest)
-  	resp := make(map[string]string)
-  	resp["message"] = "Bad Request"
-  	jsonResp, err := json.Marshal(resp)
-  	if err != nil {
-  		panic(err)
-  	}
-  	w.Write(jsonResp)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Bad request"})
   	return
+  }
+  user_exists := check_user_exists(user_id)
+  if user_exists {
+    balance := get_user_balance(user_id)
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]float64{"balance": balance})
+    return
   } else {
-    id, err := strconv.Atoi(id)
+    w.WriteHeader(http.StatusNotFound)
+    json.NewEncoder(w).Encode(map[string]string{"result": "Not found"})
+    return
+  }
+}
+
+func unreserve_money(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+
+  user_id, err1 := strconv.Atoi(r.URL.Query().Get("user_id"))
+  service_id, err2 := strconv.Atoi(r.URL.Query().Get("service_id"))
+  order_id, err3 := strconv.Atoi(r.URL.Query().Get("order_id"))
+  price, err4 := strconv.ParseFloat(r.URL.Query().Get("price"), 64)
+
+  if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+    w.WriteHeader(http.StatusBadRequest)
+  	json.NewEncoder(w).Encode(map[string]string{"result": "Bad request"})
+  	return
+  }
+
+  if check_reservation_exists(user_id, service_id, order_id, price) {
+    new_balance := get_user_balance(user_id) + price
+
+    query := "DELETE FROM `reservations` WHERE user = ? AND service = ? AND order_id = ? AND price = ?"
+    delete, err := db.Query(query, user_id, service_id, order_id, price)
     if err != nil {
       panic(err)
     }
+    defer delete.Close()
 
-    db, err := sql.Open(db_type, connection)
+    query = "UPDATE users SET `balance` = ? WHERE `id` = ?"
+    update, err := db.Query(query, new_balance, user_id)
     if err != nil {
       panic(err)
     }
-    defer db.Close()
+    defer update.Close()
 
-    get_query := fmt.Sprintf("SELECT * FROM `users` WHERE `id`='%d'", id)
-
-    get, err := db.Query(get_query)
-    if err != nil {
-      panic(err)
-    }
-
-    var result_user = User{}
-
-    i := 0
-    for get.Next() {
-      var user User
-      err = get.Scan(&user.Id, &user.Balance)
-      i++
-      if err != nil {
-        panic(err)
-      }
-      result_user = user
-    }
-
-    if i == 0 {
-      w.WriteHeader(http.StatusOK)
-    	resp := make(map[string]string)
-    	resp["message"] = "No such user"
-    	jsonResp, err := json.Marshal(resp)
-    	if err != nil {
-    		panic(err)
-    	}
-    	w.Write(jsonResp)
-    	return
-    } else {
-      w.WriteHeader(http.StatusOK)
-    	resp := make(map[string]float64)
-    	resp["balance"] = result_user.Balance
-    	jsonResp, err := json.Marshal(resp)
-    	if err != nil {
-    		panic(err)
-    	}
-    	w.Write(jsonResp)
-    	return
-    }
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{"result": "Money unreserved"})
+    return
+  } else {
+    w.WriteHeader(http.StatusNotFound)
+    json.NewEncoder(w).Encode(map[string]string{"result": "Reservation not found"})
+    return
   }
 }
 
@@ -369,11 +248,30 @@ func handleFunc()  {
   rtr.HandleFunc("/reserve_money/", reserve_money).Methods("POST")
   rtr.HandleFunc("/revenue_recognition/", revenue_recognition).Methods("POST")
   rtr.HandleFunc("/get_balance/", get_balance).Methods("GET")
+  rtr.HandleFunc("/unreserve_money/", unreserve_money).Methods("POST")
 
   http.Handle("/", rtr)
   http.ListenAndServe(":8080", nil)
 }
 
+func init_db(db_type string, username string, password string, port string, database_name string) error {
+    var err error
+    connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s", username, password, port, database_name)
+
+    db, err = sql.Open(db_type, connectionString)
+    if err != nil {
+        return err
+    }
+
+    return db.Ping()
+}
+
 func main()  {
+  err := init_db("mysql", "root", "root", "3306", "avito")
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
   handleFunc()
 }
