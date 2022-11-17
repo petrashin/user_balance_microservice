@@ -254,9 +254,9 @@ func handleFunc()  {
   http.ListenAndServe(":8080", nil)
 }
 
-func init_db(db_type string, username string, password string, port string, database_name string) error {
+func init_db(db_type string, username string, password string, ip string, port string, database_name string) error {
     var err error
-    connectionString := fmt.Sprintf("%s:%s@tcp(127.0.0.1:%s)/%s", username, password, port, database_name)
+    connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", username, password, ip, port, database_name)
 
     db, err = sql.Open(db_type, connectionString)
     if err != nil {
@@ -267,7 +267,7 @@ func init_db(db_type string, username string, password string, port string, data
 }
 
 func main()  {
-  err := init_db("mysql", "root", "root", "3306", "avito")
+  err := init_db("mysql", "root", "root", "192.168.88.252", "3306", "avito")
 
   if err != nil {
     log.Fatal(err)
