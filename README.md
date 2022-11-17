@@ -2,24 +2,24 @@
 
 ## Running Locally
 
-Make sure you have [Golang](https://go.dev/doc/install) and [Docker](https://docs.docker.com/get-docker/) installed.
+1) Make sure you have [Golang](https://go.dev/doc/install) and [Docker](https://docs.docker.com/get-docker/) installed.
 
 ```sh
 $ git clone https://github.com/petrashin/user_balance_microservice.git # or clone your own fork
 $ cd user_balance_microservice
 ```
 
-Create .env file as env.example where:
+2) Create .env file as env.example where:
 - DB_TYPE is your database DBMS (mysql or postgres)
 - DB_USERNAME is your database username (root is default in mysql)
 - DB_PASSWORD is your database password (root is default in mysql)
 - IP is your IP
 - DB_POPT is your database port (for mysql 3306 is default)
-- DB_NAME is your database name which you will create with db.sql (e.g. avito)
+- DB_NAME is your database name which you will create in 3-rd paragraph (e.g. avito)
 
-Create database with provided db.sql script
+3) Create database with provided db.sql script
 
-Start docker daemon
+4) Start docker daemon
 
 ```sh
 $ docker compose up --build
