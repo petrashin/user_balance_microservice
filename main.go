@@ -1,12 +1,14 @@
 package main
 
 import (
+  "os"
   "fmt"
   "log"
   "strconv"
   "net/http"
   "encoding/json"
   "github.com/gorilla/mux"
+  "github.com/joho/godotenv"
 
   "database/sql"
   _ "github.com/go-sql-driver/mysql"
@@ -267,11 +269,25 @@ func init_db(db_type string, username string, password string, ip string, port s
 }
 
 func main()  {
-  err := init_db("mysql", "root", "root", "192.168.88.252", "3306", "avito")
+
+  DB_TYPE, _ := os.LookupEnv("DB_TYPE")
+  DB_USERNAME, _ := os.LookupEnv("DB_USERNAME")
+  DB_PASSWORD, _ := os.LookupEnv("DB_PASSWORD")
+  IP, _ := os.LookupEnv("IP")
+  DB_PORT, _ := os.LookupEnv("DB_PORT")
+  DB_NAME, _ := os.LookupEnv("DB_NAME")
+
+  err := init_db(DB_TYPE, DB_USERNAME, DB_PASSWORD, IP, DB_PORT, DB_NAME)
 
   if err != nil {
     log.Fatal(err)
   }
 
   handleFunc()
+}
+
+func init() {
+    if err := godotenv.Load(); err != nil {
+        log.Print("No .env file found")
+    }
 }
