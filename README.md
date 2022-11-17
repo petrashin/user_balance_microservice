@@ -13,6 +13,8 @@ Create .env file as env.example
 
 Create database with provided .sql script
 
+Start docker daemon
+
 ```sh
 $ docker compose up --build
 ```
