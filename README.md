@@ -21,6 +21,8 @@ $ cd user_balance_microservice
 
 4) Start docker daemon
 
+5) Build and deploy web application service:
+
 ```sh
 $ docker compose up --build
 ```
