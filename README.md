@@ -13,7 +13,7 @@ $ cd user_balance_microservice
 - DB_TYPE is your database DBMS (mysql or postgres)
 - DB_USERNAME is your database username (root is default in mysql)
 - DB_PASSWORD is your database password (root is default in mysql)
-- IP is your IP
+- IP is your current ip
 - DB_POPT is your database port (for mysql 3306 is default)
 - DB_NAME is your database name which you will create in 3-rd paragraph (e.g. avito)
 
