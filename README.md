@@ -27,7 +27,7 @@ $ cd user_balance_microservice
 $ docker compose up --build
 ```
 
-API endpoints:
+## API endpoints:
 - (POST) http://127.0.0.1:8080/update_balance/?id={{id}}&balance={{balance}} - update user balance <br>
 - (POST) http://127.0.0.1:8080/reserve_money/?user_id={{id}}&service_id={{service_id}}&order_id={{order_id}}&price={{price}} - reserve money <br>
 - (POST) http://127.0.0.1:8080/revenue_recognition/?user_id={{id}}&service_id={{service_id}}&order_id={{order_id}}&price={{price}} - write of to revenue <br>
