@@ -171,6 +171,7 @@ func revenue_recognition(w http.ResponseWriter, r *http.Request)  {
     }
     defer delete.Close()
 
+    w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(map[string]string{"result": "Successfully"})
     return
   } else {
