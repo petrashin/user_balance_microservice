@@ -7,7 +7,7 @@
 2) Выполните следующие команды в консоли:
 
 ```sh
-$ git clone https://github.com/petrashin/user_balance_microservice.git # or clone your own fork
+$ git clone https://github.com/petrashin/user_balance_microservice.git # или клонируйте свой собственный fork
 $ cd user_balance_microservice
 ```
 
