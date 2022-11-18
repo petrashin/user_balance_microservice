@@ -4,12 +4,14 @@
 
 1) Make sure you have [Golang](https://go.dev/doc/install) and [Docker](https://docs.docker.com/get-docker/) installed.
 
+2) Run the following commands in the console:
+
 ```sh
 $ git clone https://github.com/petrashin/user_balance_microservice.git # or clone your own fork
 $ cd user_balance_microservice
 ```
 
-2) Create .env file as env.example where:
+3) Create .env file as env.example where:
 - DB_TYPE is your database DBMS (mysql or postgres)
 - DB_USERNAME is your database username (root is default in mysql)
 - DB_PASSWORD is your database password (root is default in mysql)
@@ -17,17 +19,17 @@ $ cd user_balance_microservice
 - DB_POPT is your database port (for mysql 3306 is default)
 - DB_NAME is your database name which you will create in 3-rd paragraph (e.g. avito)
 
-3) Create database with provided db.sql script
+4) Create database with provided db.sql script
 
-4) Run provided tests:
+5) Run provided tests:
 
 ```sh
 $ go test -v
 ```
 
-5) Start docker daemon
+6) Start docker daemon
 
-6) Build and deploy web application service:
+7) Build and deploy web application service:
 
 ```sh
 $ docker compose up --build
