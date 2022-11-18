@@ -19,9 +19,15 @@ $ cd user_balance_microservice
 
 3) Create database with provided db.sql script
 
-4) Start docker daemon
+4) Run provided tests:
 
-5) Build and deploy web application service:
+```sh
+$ go test -v
+```
+
+5) Start docker daemon
+
+6) Build and deploy web application service:
 
 ```sh
 $ docker compose up --build
